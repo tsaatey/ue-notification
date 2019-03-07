@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css">
+  <title></title>
+
+  <style media="screen">
+  .container {
+    margin-top: 50px;
+  }
+
+  .btn {
+    background-color:  #fff;
+    color: #000;
+    border-color:  #00bfa5;
+    border-radius: 50px;
+    border: 2px solid #00bfa5;
+  }
+
+  .btn:active {
+    outline: 0 !important;
+    color: #000;
+    background-color:  #fff !important;
+    border-color:  #00bfa5 !important;
+    box-shadow: none !important;
+    border-radius: 50px !important;
+    border: 2px solid #00bfa5 !important;
+
+  }
+
+  .btn:focus {
+    outline: 0 !important;
+    color: #000;
+    background-color:  #fff !important;
+    border-color:  #00bfa5 !important;
+    box-shadow: none !important;
+    border-radius: 50px !important;
+    border: 2px solid #00bfa5 !important;
+  }
+
+  #checkBox {
+    margin-bottom: 16px;
+  }
+
+  .page-heading  {
+    background: linear-gradient(to right, #f6d208 1%, #00bfa5 1%, #00bfa5 98%, #00bfa5, #00bfa5 1%);
+    color: #ffffff;
+    width: 100%;
+    height: 40px;
+    margin-bottom: 16px;
+  }
+
+  .selector-bottom {
+    border-bottom: 1px solid #eeeeee;
+    margin-bottom: 16px;
+  }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-3"></div>
+      <div class="col-sm-6">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="row page-heading">
+              <h6 style="width: 100%; text-align: center; line-height: 35px;">Welcome to Ultimate Elections Notification Center</h6>
+            </div>
+            <div class="row">
+              <div class="col-sm-2"></div>
+              <div class="col-sm-8">
+                <div class="row form-group">
+                  <label for = "noteType">Notification Type</label>
+                  <select class="form-control select" name="noteType" id = "noteType">
+                    <option disabled selected>Select notification type</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-sm-2"></div>
+            </div>
+            <div class="row selector-bottom"></div>
+            <div class="row">
+              <div class="col-sm-2"></div>
+              <div class="col-sm-8">
+                <div class="row">
+                  <div class="col-sm-12">
+                    <!-- Form here -->
+                    <form id="notification_form" enctype="multipart/form-data">
+                      <div class="row">
+                        <div class="col-sm-12" id="form-container"></div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-3"></div>
+    </div>
+  </div>
+
+  <script src = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js'></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+
+  <script type="text/javascript">
+  $(document).ready(() => {
+
+    // Assign the base url
+    var baseUrl = 'http://192.168.43.75:5000/';
+
+    var notificationtypeId = '';
+
+    // Fetch notification types from the database
+    $.ajax({
+      type: 'GET',
+      url: baseUrl + 'resources/pvote/notification/type',
+      success: function(data) {
+        if (data['status']) {
+          var response = data['result'];
+          var listitems = '';
+          for (let i = 0; i < response.length; i++) {
+            listitems += '<option value=' + response[i]['id'] + ':' + response[i]['typeUI'] + '>' + response[i]['type'] + '</option>';
+          }
+          $('#noteType').append(listitems);
+
+        } else {
+          toastr.error(response['message'], 'Unsuccessful Action')
+        }
+
+      },
+      error: function(xhr) {
+        if (xhr.status === 0) {
+          // No internet connection
+          toastr.error('Could not fetch notification types, connection to server failed!', 'Connection Error')
+        }
+
+        if (xhr.status === 403) {
+          // Unauthorized
+          toastr.warning('You are not authorized to perform this action', 'Not authorized')
+        }
+
+        if (xhr.status === 404) {
+          // Url not found
+          toastr.info('The resoruce you are looking for cannot be found', 'Not Found')
+        }
+
+        if (xhr.status === 500) {
+          // Internal server error
+          toastr.info('Something bad happend, please try again later', 'Internal Server Error')
+        }
+      }
+    });
+
+    // Change event listener for notification type
+    $('#title').on('change', function() {
+      let typeObject = $(this).find(":selected").val();
+      let sm = typeObject.split(':');
+      notificationtypeId = sm[0];
+      typeObject = sm[1];
+
+      // Pass the object to the fuction that will create the controls on the UI
+      createUIControls(notificationtypeId, typeObject, document.getElementById('form-container'));
+    });
+
+
+    $('#progressSpan').hide();
+    $('#imageDiv').hide();
+    $('#imageUrlDiv').hide();
+    $('#sendButton').html('Send');
+
+
+    // Function to create the UI controls
+    function createUIControls(typeObj, parentContainer) {
+      // Loop to itereate over the list of objects
+      for (let i = 0; i < typeObj.length; i++) {
+        const obj = typeObj[i];
+
+        // Create an empty div
+        let container = document.createElement('div');
+        container.className = 'row form-group';
+
+        // Create a text input
+        if (obj.type === 'text') {
+          let label = document.createElement('label');
+          label.for = obj.id;
+          label.innerHTML = obj.label;
+
+          let input = document.createElement('input');
+          input.className = 'form-control';
+          input.type = 'text';
+          input.id = obj.id;
+          input.name = obj.name;
+          input.required = object.required;
+
+          container.appendChild(label);
+          container.appendChild(input);
+        }
+
+        // Create text area
+        if (obj.type === 'textArea') {
+          let label = document.createElement('label');
+          label.for = obj.id;
+          label.innerHTML = obj.label;
+
+          let textarea = document.createElement('textarea');
+          textarea.className = 'form-control';
+          textarea.id = obj.id;
+          textarea.name = obj.class
+          textarea.rows = 3;
+          text.required = obj.required;
+
+          container.appendChild(label);
+          container.appendChild(textarea);
+        }
+
+        // Create a file input
+        if (obj.type === 'file') {
+          let label = document.createElement('label');
+          label.for = obj.id;
+          label.innerHTML = obj.label;
+
+          let input = document.createElement('input');
+          input.className = 'form-control';
+          input.type = 'file';
+          input.id = obj.id;
+          input.name = obj.name;
+          input.required = object.required;
+
+          container.appendChild(label);
+          container.appendChild(input);
+        }
+
+        // Create a select
+        if (obj.type === 'select') {
+
+        }
+        parentContainer.append(container);
+      }
+      createHiddenInput(parentContainer);
+      createLastRowWithButton(parentContainer);
+    }
+
+    // Function to create button
+    function createLastRowWithButton(parentContainer) {
+      let outerContainer = document.createElement('div');
+      outerContainer.className = 'row form-group';
+
+      let firstInnerContainer = document.createElement('div');
+      firstInnerContainer.className = 'col-sm-6';
+
+      let firstInnerContainerInner = document.createElement('div');
+      firstInnerContainerInner.className = 'spinner-grow text-success';
+      firstInnerContainerInner.role = 'status';
+      firstInnerContainerInner.id = 'progressSpan';
+
+      let sp = document.createElement('span');
+      sp.className = 'sr-only';
+
+      // Append spinner
+      firstInnerContainerInner.append(sp);
+
+      // Append whole container to parent
+      firstInnerContainer.append(firstInnerContainerInner);
+
+      // Right hand side where the button is
+      let secondInnerContainer = document.createElement('div');
+      secondInnerContainer.className = 'col-sm-6';
+
+      let btn = document.createElement('button');
+      btn.className = 'btn form-control';
+      btn.id = 'sendButton';
+
+      // Append button to its container
+      secondInnerContainer.append(btn);
+
+      // Append both spinner and button to parent
+      outerContainer.append(firstInnerContainer);
+      outerContainer.append(secondInnerContainer);
+
+      parentContainer.append(outerContainer);
+    }
+
+    // Function to create hidden input
+    function createHiddenInput(id, con) {
+      let cont = document.createElement('div');
+      cont.className = 'row form-group';
+
+      let inp = document.createElement('input');
+      inp.className = 'form-control';
+      inp.type = 'hidden';
+      inp.id = id;
+      inp.name = 'type';
+      inp.value = id;
+
+      cont.appendChild(label);
+      cont.appendChild(input);
+
+      con.append(cont);
+    }
+
+    // Set change event listtener for the image radio buttons
+    $('input[name=imageDecision]').change(function() {
+      // Handle some form controls
+      let imgDec = $('input[name=imageDecision]:checked').val();
+
+      if (imgDec === 'realImage') {
+        $('#imageDiv').show();
+        $('#imageUrlDiv').hide();
+      }
+
+      if (imgDec === 'urlOfImage') {
+        $('#imageUrlDiv').show();
+        $('#imageDiv').hide();
+      }
+    });
+
+
+
+    // Validation function
+    function validateNotification() {
+      if ($('#type').val() && $('#title').val() && $('#message').val()) {
+        return true;
+      }
+      return false;
+    }
+
+    // Handle send button click event
+    $('#sendButton').click((e) => {
+      e.preventDefault();
+
+      $('#sendButton').html('Sending...');
+      $('#sendButton').attr('disabled',true);
+      $('#progressSpan').show();
+
+
+      // Get form with data
+      const filledForm = $("#notification_form :input[value!=''][value!='.']");
+
+      // Create a new FormData object
+      // let data = new FormData();
+      //
+      // if (validateNotification()) {
+      //   data.append('title', $('#title').val());
+      //   data.append('message', $('#message').val());
+      //   data.append('type', $('#type').val());
+      //
+      //   if ($('#image')[0].files[0]) {
+      //     data.append('image', $('#image')[0].files[0]);
+      //   }
+      //
+      //   if ($('#imageUrl').val()) {
+      //     data.append('imageUrl', $('#imageUrl').val());
+      //   }
+      //
+      //   if ($('#facebookVideoUrl').val()) {
+      //     data.append('title', $('#facebookVideoUrl').val());
+      //   }
+      //
+      //   if ($('#youtubeVideoUrl').val()) {
+      //     data.append('youtubeVideoUrl', $('#youtubeVideoUrl').val());
+      //   }
+
+        // Post the data to the API using Ajax
+        $.ajax({
+          type: 'POST',
+          url: baseUrl + 'resources/pvote/notification',
+          data: filledForm,
+          processData: false,
+          contentType: false,
+          success: function(response) {
+            // Handle response here
+            if (response['status']) {
+              $('#sendButton').html('Send');
+              $('#sendButton').attr('disabled',false);
+              $('#progressSpan').hide();
+              toastr.success('Notification has been successfully sent to the server.', 'Action Successful!')
+
+            } else {
+              $('#sendButton').html('Send');
+              $('#sendButton').attr('disabled',false);
+              $('#progressSpan').hide();
+              toastr.error(response['message'], 'Unsuccessful Action')
+            }
+          },
+          error: function(xhr) {
+            $('#sendButton').html('Send');
+            $('#sendButton').attr('disabled',false);
+            $('#progressSpan').hide();
+
+            if (xhr.status === 0) {
+              // No internet connection
+              toastr.error('Could not establish a secure connection to the server!', 'Connection Error')
+            }
+
+            if (xhr.status === 403) {
+              // Unauthorized
+              toastr.warning('You are not authorized to perform this action', 'Not authorized')
+            }
+
+            if (xhr.status === 404) {
+              // Url not found
+              toastr.info('The resoruce you are looking for cannot be found', 'Not Found')
+            }
+
+            if (xhr.status === 500) {
+              // Internal server error
+              toastr.info('Something bad happend, please try again later', 'Internal Server Error')
+            }
+          }
+        });
+
+      // } else {
+      //   $('#sendButton').html('Send');
+      //   $('#sendButton').attr('disabled',false);
+      //   $('#progressSpan').hide();
+      //   toastr.error('Please supply a title, meesage and the type of notification!', 'Some Fields are Required!')
+      // }
+    });
+  });
+</script>
+</body>
+</html>
