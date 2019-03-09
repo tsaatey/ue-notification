@@ -184,7 +184,7 @@ $(document).ready(() => {
         for (let i = 0; i < response.length; i++) {
           listitems += '<option value=' + response[i]['id'] + '>' + response[i]['type'] + '</option>';
         }
-        $('#noteType').append(listitems);
+        $('#type').append(listitems);
 
       } else {
         toastr.error(response['message'], 'Unsuccessful Action')
